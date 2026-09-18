@@ -16,7 +16,7 @@ Segundo semestre 2026
 | Repositorio | [Redes1_2S_2026_202300689](https://github.com/JosueDanielHC/Redes1_2S_2026_202300689) |
 | Archivo `.pkt` | `Proyecto1_202300689.pkt` |
 
-Este manual es el entregable técnico del Proyecto 1. El `README.md` de la carpeta es la portada del repositorio y resume el mismo diseño.
+El entregable oficial del Manual Técnico es el [`README.md`](../../README.md) en la raíz del repositorio. Este archivo es una copia de trabajo dentro de `Proyecto1/documentacion/`.
 
 ---
 
