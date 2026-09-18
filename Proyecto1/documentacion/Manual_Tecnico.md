@@ -1,0 +1,343 @@
+# Manual Técnico — Proyecto 1: SmartCity Tech Park
+
+**Universidad de San Carlos de Guatemala**  
+Facultad de Ingeniería — Escuela de Ingeniería en Ciencias y Sistemas  
+Laboratorio de Redes de Computadoras 1  
+Segundo semestre 2026
+
+| Dato | Valor |
+| --- | --- |
+| Documento | Manual Técnico |
+| Proyecto | SmartCity Tech Park (Capa 1 y Capa 2) |
+| Estudiante | Josue Daniel Herrera Cottom |
+| Carné | 202300689 |
+| Compañero (parte física) | Oscar Danilo Melendrez Marroquin — 202308486 |
+| Packet Tracer | 9.0.1.0858 |
+| Repositorio | [Redes1_2S_2026_202300689](https://github.com/JosueDanielHC/Redes1_2S_2026_202300689) |
+| Archivo `.pkt` | `Proyecto1_202300689.pkt` |
+
+Este manual es el entregable técnico del Proyecto 1. El `README.md` de la carpeta es la portada del repositorio y resume el mismo diseño.
+
+---
+
+## 1. Introducción
+
+SmartCity Tech Park requiere una red de campus con diseño jerárquico, VLANs por función, VTP, trunks con VLAN nativa distinta de 1, EtherChannel, STP y un segmento Legacy con Hub. Este documento describe la topología implementada en Cisco Packet Tracer, las decisiones de diseño, las pruebas ejecutadas y el presupuesto estimado del equipo simulado.
+
+## 2. Objetivo
+
+Diseñar, configurar y verificar una red de Capa 1 y Capa 2 que cumpla el enunciado oficial: cuatro zonas (Centro de Datos, I+D, Corporativo, Planta de Producción), aislamiento entre VLANs, redundancia demostrable y evidencias de `show` y ping.
+
+## 3. Descripción del problema
+
+El parque tecnológico concentra investigación, gerencia, visitantes inalámbricos, granja de servidores y máquinas industriales antiguas. Hay que unir esos segmentos sin mezclar dominios de broadcast, sin usar VLAN 1 como nativa, y con alta disponibilidad en I+D, Corporativo y la granja.
+
+## 4. Parámetros del carné (verificados dos veces)
+
+Carnet **202300689** (impar). Último dígito **X = 9**. Penúltimo **# = 8**.
+
+| Parámetro | Valor |
+| --- | --- |
+| VLAN Gerencia | **19** GERENCIA |
+| VLAN Investigación | **29** INVESTIGACION |
+| VLAN Producción | **39** PRODUCCION |
+| VLAN Servidores | **49** SERVIDORES |
+| VLAN Visitantes | **59** VISITANTES |
+| VLAN nativa | **99** NATIVA |
+| Dominio VTP | `Smart_8` |
+| Password VTP | `proyecto12S2026` |
+| EtherChannel | **PAgP** (`desirable`) |
+| STP | **Rapid-PVST** |
+| Banner (distribución) | `Acceso Restringido - TechPark_202300689` |
+
+## 5. Arquitectura jerárquica
+
+- **Core:** `SW-CORE` (Catalyst 3650-24PS) en el Centro de Datos. VTP Server y Root Bridge.
+- **Distribución:** `SW-ID-DIST`, `SW-CORP-DIST` (3650-24PS) y `SW-PROD-DIST` (2960-24TT).
+- **Acceso:** switches 2960-24TT por ala/área, granja `SW-DC-SRV`, visitantes `SW-CORP-VISIT` (VTP Transparent).
+
+No hay routers: el alcance del proyecto es Capa 1 y 2. El aislamiento inter-VLAN se demuestra **sin enrutamiento**.
+
+## 6. Topología
+
+```text
+                         SRV1 SRV2 SRV3 SRV4
+                                |
+                           SW-DC-SRV
+                          Po2 (PAgP 2x cobre)
+                                |
+                            SW-CORE
+                     /          |          \
+              Po1 2x fibra    1x fibra    1x cobre
+                 /              |            \
+          SW-ID-DIST      SW-CORP-DIST    SW-PROD-DIST
+           /      \        /    |    \           |
+     ACC1        ACC2  ALA-A  ALA-B  VISIT      HUB
+     4 PC        4 PC   2 PC   2 PC   AP+2 LT   2 PC IND
+           \    /               \    /
+          trunk triángulo    trunk entre alas
+```
+
+## 7. Inventario de dispositivos
+
+| Nombre | Modelo PT | Función |
+| --- | --- | --- |
+| SW-CORE | 3650-24PS | Core, VTP Server, Root |
+| SW-DC-SRV | 2960-24TT | Acceso granja |
+| SW-ID-DIST | 3650-24PS | Distribución I+D |
+| SW-ID-ACC1 / ACC2 | 2960-24TT | Acceso I+D (triángulo) |
+| SW-CORP-DIST | 3650-24PS | Distribución Corporativo |
+| SW-CORP-ALA-A / ALA-B | 2960-24TT | Acceso gerencia por ala |
+| SW-CORP-VISIT | 2960-24TT | Acceso visitantes (VTP Transparent) |
+| SW-PROD-DIST | 2960-24TT | Acceso/distribución Producción |
+| HUB-LEGACY | Hub-PT | Dominio de colisión compartido |
+| AP-VISIT | AccessPoint-PT | WiFi VLAN 59 |
+| SRV1–SRV4 | Server-PT | Granja VLAN 49 |
+| PC-ID-1 a 8 | PC-PT | I+D VLAN 29 |
+| PC-GER-A1/A2, B1/B2 | PC-PT | Gerencia VLAN 19 |
+| PC-IND-1/2 | PC-PT | Industrial VLAN 39 |
+| Laptop-VISIT-1/2 | host + `PT-HOST-NM-1W` | Visitantes VLAN 59 |
+
+## 8. Tabla de VLAN y dispositivos
+
+| VLAN | Nombre | Ubicación | Dispositivos |
+| ---: | --- | --- | --- |
+| 19 | GERENCIA | Alas A y B | PC-GER-A1, A2, B1, B2 |
+| 29 | INVESTIGACION | I+D ACC1 y ACC2 | PC-ID-1 … PC-ID-8 |
+| 39 | PRODUCCION | Hub Legacy | PC-IND-1, PC-IND-2 |
+| 49 | SERVIDORES | Granja | SRV1 … SRV4 |
+| 59 | VISITANTES | AP-VISIT | Laptop-VISIT-1, Laptop-VISIT-2 |
+| 99 | NATIVA | Todos los trunks | sin hosts |
+
+## 9. Direccionamiento (solo para pruebas L2)
+
+Máscara `255.255.255.0`. Gateway vacío a propósito: no hay ruteo inter-VLAN.
+
+| VLAN | Red | Hosts |
+| ---: | --- | --- |
+| 19 | 192.168.19.0/24 | A1 `.11` A2 `.12` B1 `.13` B2 `.14` |
+| 29 | 192.168.29.0/24 | PC-ID-1 `.11` … PC-ID-8 `.18` |
+| 39 | 192.168.39.0/24 | IND-1 `.11` IND-2 `.12` |
+| 49 | 192.168.49.0/24 | SRV1 `.11` … SRV4 `.14` |
+| 59 | 192.168.59.0/24 | Laptop-1 `.11` Laptop-2 `.12` |
+
+SSID visitantes (decisión de diseño): `VISITANTES`, WPA2-PSK, clave `Visitantes2026`.
+
+## 10. VTP
+
+| Switch | Modo | Justificación |
+| --- | --- | --- |
+| SW-CORE | Server | El Core administra el dominio; único punto de creación de VLAN |
+| Resto (excepto VISIT) | Client | Reciben VLAN 19/29/39/49/59/99 |
+| SW-CORP-VISIT | Transparent | Visitantes aislados: no aceptan el catálogo VTP; VLAN 59 y 99 se crearon **en local** |
+
+Dominio `Smart_8`, password `proyecto12S2026`. Tras los trunks, los Client subieron revision (evidencia: revisión 12 en distribución).
+
+## 11. Trunks y VLAN nativa
+
+Todos los enlaces switch–switch son trunk 802.1q con **native VLAN 99** (nunca VLAN 1).
+
+| Origen | Destino | Medio |
+| --- | --- | --- |
+| CORE Gi1/1/1-2 | ID-DIST Gi1/1/1-2 | Fibra SM (Po1) |
+| CORE Gi1/1/3 | CORP-DIST Gi1/1/1 | Fibra SM |
+| CORE Gi1/0/1-2 | DC-SRV Gi0/1-2 | Cobre (Po2) |
+| CORE Gi1/0/3 | PROD-DIST | Cobre |
+| ID-DIST | ACC1, ACC2 | Cobre |
+| ACC1 | ACC2 | Cobre (triángulo) |
+| CORP-DIST | ALA-A, ALA-B, VISIT | Cobre |
+| ALA-A | ALA-B | Cobre (redundancia) |
+
+SFP utilizados: **GLC-LH-SMD** (3 en Core, 2 en ID-DIST, 1 en CORP-DIST).
+
+## 12. EtherChannel (PAgP)
+
+Carnet impar → PAgP, modo `desirable` en ambos extremos.
+
+| ID | Enlaces | Estado verificado |
+| --- | --- | --- |
+| Po1 | CORE ↔ ID-DIST, 2× fibra | `Po1(SU)`, puertos `(P)`, protocolo PAgP |
+| Po2 | CORE ↔ DC-SRV, 2× cobre | `Po2(SU)`, puertos `(P)`, protocolo PAgP |
+
+Los Port-channel del 3650 nacióen como L3: se aplicó `switchport` + nativa 99 para que el bundle subiera. Evidencia: `30_etherchannel_summary_core.png`.
+
+## 13. STP y Root Bridge
+
+Protocolo: **Rapid-PVST**.
+
+| VLAN | Root | Prioridad | Secundario | Prioridad |
+| ---: | --- | ---: | --- | ---: |
+| 19 | SW-CORE | 4096 | SW-CORP-DIST | 8192 |
+| 29 | SW-CORE | 4096 | SW-ID-DIST | 8192 |
+| 39 | SW-CORE | 4096 | SW-PROD-DIST | 8192 |
+| 49 | SW-CORE | 4096 | SW-DC-SRV | 8192 |
+| 59 | SW-CORE | 4096 | SW-CORP-DIST | 8192 |
+| 99 | SW-CORE | 4096 | SW-ID-DIST | 8192 |
+| 1 | SW-CORE | 4096 | — | — |
+
+VLAN 1 no se usa para hosts; se unificó el Root en el Core para que el uplink de Corporativo (`Gi1/1/3`) no quedara como Root Port de VLAN 1 y Designated Blocking en el resto. Tras `link-type point-to-point` y recarga del puerto, `Gi1/1/3` quedó **Desg FWD** en todas las VLAN.
+
+Los naranjas del triángulo I+D y de las alas son puertos Alternate/Backup de STP. **No se eliminan.**
+
+## 14. Redundancia (pruebas reales)
+
+| Prueba | Acción | Resultado |
+| --- | --- | --- |
+| I+D | `shutdown` Gi0/1 de SW-ID-ACC1 | Ping PC-ID-1 → 192.168.29.15 **siguió OK** |
+| Corporativo | `shutdown` Gi0/1 de SW-CORP-ALA-A | Ping PC-GER-A1 → 192.168.19.13 **siguió OK** |
+| Granja | Po2 con 2 miembros | Los servidores no dependen de un solo cobre |
+
+Enlaces restaurados con `no shutdown` y `write memory`.
+
+## 15. Segmento Legacy
+
+`PC-IND-1/2` → `HUB-LEGACY` → `SW-PROD-DIST` Fa0/1 (access VLAN 39).
+
+Impacto: un solo dominio de colisión; si IND-1 transmite, IND-2 y el puerto del switch compiten por el medio (CSMA/CD). El switch **contiene** el dominio hacia el resto de la red (no inunda colisiones al Core), pero **no elimina** el segmento Legacy: el Hub sigue siendo compartido entre las máquinas industriales.
+
+## 16. Dominios de colisión
+
+Cálculo según topología final (1 dominio por puerto de switch full-duplex activo). El Hub es la excepción.
+
+| Dispositivo | Puertos activos | Dominios de colisión |
+| --- | ---: | ---: |
+| SW-CORE | 6 | 6 |
+| SW-DC-SRV | 6 | 6 |
+| SW-ID-DIST | 4 | 4 |
+| SW-ID-ACC1 | 6 | 6 |
+| SW-ID-ACC2 | 6 | 6 |
+| SW-CORP-DIST | 4 | 4 |
+| SW-CORP-ALA-A | 4 | 4 |
+| SW-CORP-ALA-B | 4 | 4 |
+| SW-CORP-VISIT | 2 | 2 |
+| SW-PROD-DIST | 1 (uplink al Core) | 1 |
+| HUB-LEGACY | 3 (switch + 2 PC) | **1 compartido** |
+
+`Fa0/1` de Producción pertenece al dominio del Hub, no suma uno extra.
+
+## 17. Dominios de broadcast
+
+Una VLAN activa = un dominio de broadcast.
+
+| VLAN | Nombre | Dominios |
+| ---: | --- | ---: |
+| 19 | GERENCIA | 1 |
+| 29 | INVESTIGACION | 1 |
+| 39 | PRODUCCION | 1 |
+| 49 | SERVIDORES | 1 |
+| 59 | VISITANTES | 1 |
+| 99 | NATIVA | 1 |
+
+VLAN 1 existe en los switches (puertos vacíos) pero **no transporta hosts del proyecto**.
+
+## 18. Medios de transmisión
+
+| Enlace | Medio | Justificación |
+| --- | --- | --- |
+| Core ↔ I+D (alta demanda, 8 PCs + investigación) | Fibra SM + GLC-LH-SMD, EtherChannel 2 enlaces | Distancia entre edificios, EMI, mayor ancho de banda |
+| Core ↔ Corporativo | Fibra SM (1 enlace) | Distancia edificio–Core; demanda menor que I+D |
+| Core ↔ Producción | Cobre UTP | Planta más cercana al Data Center; menor costo; Hub a 100 Mb |
+| Core ↔ granja | Cobre + EtherChannel | Mismos rack/cuarto; alta capacidad sin fibra |
+| Acceso (PC, AP, Hub) | UTP straight-through | Horizontal < 100 m |
+| Switch–switch cobre | UTP crossover (PT) | Enlaces entre dispositivos activos |
+
+## 19. Pruebas de conectividad (ejecutadas)
+
+| Origen | Destino | Esperado | Real | Evidencia |
+| --- | --- | --- | --- | --- |
+| PC-ID-1 | PC-ID-2 (`.12`) | OK | OK 0% pérdida | `44_ping_id_intra_vlan.png` |
+| PC-ID-1 | PC-ID-5 (`.15`) ACC2 | OK | OK 0% pérdida | `53_ping_id_acc1_acc2.png` |
+| PC-GER-A1 | A2 (`.12`) | OK | OK | `46_ping_gerencia_ala_a.png` |
+| PC-GER-A1 | B1 (`.13`) | OK | OK | `47_ping_gerencia_entre_alas.png` |
+| SRV1 | SRV2 (`.12`) | OK | OK | `49_ping_servidores.png` |
+| PC-IND-1 | PC-IND-2 (`.12`) | OK | OK | `50_ping_produccion_legacy.png` |
+| Laptop-VISIT-1 | Laptop-2 (`.12`) | OK | OK | `51_ping_visitantes_intra.png` |
+| PC-GER-A1 | PC-ID-1 (`.11`) | Falla | Timeout 100% | `48_ping_fallido_gerencia_a_id.png` |
+| Laptop-VISIT-1 | PC-GER-A1 | Falla | Timeout 100% | `52_ping_fallido_visita_a_gerencia.png` |
+| PC-ID-1 | `.15` con uplink ACC1 down | OK | OK | `54_ping_redundancia_id.png` |
+| PC-GER-A1 | `.13` con uplink Ala A down | OK | OK | `55_ping_redundancia_corp.png` |
+
+## 20. Decisiones de diseño
+
+| Decisión | Alternativas | Elegida | Justificación |
+| --- | --- | --- | --- |
+| Root Bridge | Dist por VLAN / Core único | Core prioridad 4096 | El tráfico de los tres edificios converge ahí; fácil de defender |
+| EtherChannel | LACP vs PAgP | PAgP | Carné impar (PDF) |
+| STP | PVST vs Rapid-PVST | Rapid-PVST | Carné impar (PDF) |
+| VTP Transparent | Todos Client | Solo VISIT | Aisla el catálogo de visitantes |
+| Medio Core–I+D | Cobre vs fibra | Fibra + Po1 | Mayor demanda y distancia |
+| Medio Core–Corp | 2 fibras vs 1 | 1 fibra | Demanda menor que I+D |
+| Medio Core–Prod | Fibra vs cobre | Cobre | Cercanía y Legacy a 100 Mb |
+| I+D | Anillo vs triángulo | Triángulo 3 SW | Caída de un switch no aísla a los otros |
+| Corporativo | Un switch vs 2 alas | 2 alas + enlace A–B | Redundancia si cae el uplink de un ala |
+| WiFi | Abierto vs WPA2 | WPA2-PSK `Visitantes2026` | Demostrable y documentable |
+
+## 21. Presupuesto estimado
+
+Precios de **mercado refurbished / plaza Guatemala** consultados el 8-sep-2026. No son lista Cisco nueva. Tipo de cambio referencial usado solo para totalizar: **Q7.75 / USD**.
+
+| Ítem | Cant. | Precio unit. | Fuente | Subtotal |
+| --- | ---: | --- | --- | --- |
+| Catalyst 3650-24PS (refurb.) | 3 | USD 125 | [ORMSystems WS-C3650-24PS-S](https://ormsystems.com/ws-c3650-24ps-s-price.html) | USD 375 |
+| Catalyst 2960-24TT (refurb.) | 7 | USD 125 | [Network Outlet WS-C2960-24TT-L](https://networkoutlet.com/products/ws-c2960-24tt-l-cisco-catalyst-2960-24-10-100-2ge-lan) | USD 875 |
+| GLC-LH-SMD (refurb.) | 6 | USD 78 | [ORMSystems GLC-LH-SMD](https://ormsystems.com/glc-lh-smd-price.html) | USD 468 |
+| Cisco Business 240AC AP | 1 | Q 1,890 | [Pacifiko](https://www.pacifiko.com/cisco-designed) | ≈ USD 244 |
+| UTP Cat6 (caja 305 m) | 1 | Q 1,498 | [Kemik Guatemala](https://www.kemik.gt/hikvision-cable-de-red-utp-cat-6-305-m-cobre-solido-23awg-alto-rendimiento) | ≈ USD 193 |
+| Hub 8 puertos (Legacy, mercado usado) | 1 | USD 25 | Referencial (equipo descatalogado) | USD 25 |
+
+**Total aproximado: USD 2,180 (≈ Q 16,900).** No incluye PCs, servidores ni manodobra. Los jumpers de fibra SM se cubren con la caja de UTP + patch de SM no cotizado en plaza al momento de la consulta (quedan como línea a cotizar con el proveedor de óptica).
+
+## 22. Modo Simulation (actividad opcional del PDF)
+
+El enunciado pide, si se realiza, inspeccionar una BPDU de STP y una PDU de VTP.
+
+| Campo STP | Valor observado | Evidencia |
+| --- | --- | --- |
+| Root ID | [INSERTAR de la captura] | `60_sim_bpdu_stp.png` |
+| Bridge ID | [INSERTAR] | |
+| Costo del enlace | [INSERTAR] | |
+| Campo VTP | Valor observado | Evidencia |
+| VTP Domain Name | debe ser `Smart_8` | `61_sim_pdu_vtp.png` |
+| Configuration Revision | [INSERTAR, esperado ≥ 12] | |
+
+Cuando existan las capturas, estos marcadores se reemplazan. No se inventan valores.
+
+## 23. Resultados
+
+- VTP propaga las VLAN del carné desde el Core.
+- Trunks nativa 99. EtherChannel PAgP Po1 y Po2 en `SU`.
+- Rapid-PVST con Root en SW-CORE.
+- Ping intra-VLAN correcto; ping inter-VLAN fallido (aislamiento).
+- Redundancia I+D y Corporativo comprobada apagando un uplink.
+- Legacy con Hub operativo en VLAN 39.
+
+## 24. Conclusiones
+
+La red cumple Capa 1 y 2 del SmartCity Tech Park: jerarquía, VLAN por función, nativa 99, PAgP y Rapid-PVST según carné impar, visitantes fuera de VTP Server/Client, y un Legacy que se documenta en lugar de esconderse. El siguiente paso de curso es la implementación física con dos switches (VTP Server + Client).
+
+## 25. Evidencias (nombres de archivo)
+
+Colocar en `evidencias/` las capturas ya tomadas:
+
+| Archivo | Qué demuestra |
+| --- | --- |
+| `30_etherchannel_summary_core.png` | Po1/Po2 SU PAgP |
+| `31_stp_core_root.png` / `32_stp_summary_core.png` | Rapid-PVST, Root |
+| `34_stp_gi1_1_3_core.png` | Uplink Corp Desg FWD |
+| `35`–`41` vlan access | Puertos de acceso |
+| `42_ap_ssid.png` `43_laptops_asociadas.png` | WiFi VLAN 59 |
+| `44`–`53` pings | Matriz de conectividad |
+| `54` `55` | Redundancia I+D y Corp |
+
+## 26. Estructura del repositorio
+
+```text
+Proyecto1/
+├── README.md
+├── Proyecto1_202300689.pkt
+├── evidencias/
+│   ├── topologia/  vlan/  vtp/  stp/  etherchannel/  trunks/  conectividad/
+└── documentacion/
+    ├── laboratorio_fisico.md
+    └── defensa_oral.md
+```
