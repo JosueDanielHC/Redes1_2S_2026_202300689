@@ -18,7 +18,7 @@ Este `README.md` es el **Manual Técnico completo** del Proyecto 1 (Capa 1 y Cap
 | Archivo de simulación | [`Proyecto1_202300689.pkt`](Proyecto1_202300689.pkt) |
 | Semestre | Segundo semestre 2026 |
 
-Otros entregables del curso en este repositorio: [`Practica1/`](Practica1/) · [`Tarea 3/`](Tarea%203/) · [`Proyecto1/`](Proyecto1/).
+Otros entregables del curso en este repositorio: [`Practica1/`](Practica1/) · [`Practica2/`](Practica2/) · [`Tarea 3/`](Tarea%203/) · [`Proyecto1/`](Proyecto1/).
 
 ---
 
@@ -353,5 +353,11 @@ Capturas en [`Proyecto1/evidencias/`](Proyecto1/evidencias/):
 │       ├── laboratorio_fisico.md
 │       └── defensa_oral.md
 ├── Practica1/
+├── Practica2/
+│   ├── Practica2_202300689.pkt
+│   ├── Manual_Tecnico.md
+│   ├── Informe_Desarrollo.md
+│   ├── codigo_fuente.md
+│   └── capturas/
 └── Tarea 3/
 ```
