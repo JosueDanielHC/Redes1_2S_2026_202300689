@@ -1,4 +1,4 @@
-# Actividad Práctica 6 — Enrutamiento Inter-VLAN
+# Actividad práctica 6 — HSRP
 
 Universidad de San Carlos de Guatemala  
 Facultad de Ingeniería  
@@ -10,9 +10,9 @@ Redes de Computadoras 1 — Segundo semestre 2026
 | Estudiante | Josue Daniel Herrera Cottom |
 | Carné | 202300689 |
 | Fecha | 11 de octubre de 2026 |
-| Simulación | [AP6_InterVLAN_202300689.pkt](AP6_InterVLAN_202300689.pkt) |
-| Informe | [AP6_InterVLAN_202300689.pdf](AP6_InterVLAN_202300689.pdf) |
+| Simulación | [202300689_JosueDanielHerreraCottom_HSRP.pkt](202300689_JosueDanielHerreraCottom_HSRP.pkt) |
+| Informe | [202300689_JosueDanielHerreraCottom_HSRP.pdf](202300689_JosueDanielHerreraCottom_HSRP.pdf) |
 
-La práctica compara dos formas de comunicar la VLAN 10 (Marketing) y la VLAN 20 (Engineering): Router-on-a-Stick con un 2911 y un 2960, y un switch de capa 3 3650 con interfaces virtuales (SVI). No hay enlace entre los dos escenarios.
+La entrega de esta actividad es el par de archivos con el nombre `Carnet_Nombre_HSRP`. La PC inferior usa como gateway la IP virtual `192.168.10.1`. `R1` inicia activo y `R2` en espera. Al apagar la LAN de `R1`, `R2` toma el rol activo y el ping hacia la PC superior se recupera.
 
-El documento que se entrega es el PDF. Incluye la topología, la configuración de subinterfaces, las SVI con `ip routing`, las tablas de enrutamiento, los ping y tracert, y la comparación de los dos métodos.
+El archivo `.pkt` quedó guardado con `Gi0/0` de `R1` en shutdown, que es el estado posterior a la prueba de falla.
